@@ -4,6 +4,7 @@ import { type Author, type AuthorInput } from "../models/author.models.js";
 interface AuthorRepositoryInterface {
     createAuthor(authorInput: AuthorInput): Promise<Author | undefined>;
     getAuthorById(id: string): Promise<Author | undefined>;
+    getAuthorByName(name: string): Promise<Author | undefined>;
     listAuthors(): Promise<Author[] | undefined>;
     updateAuthor(id: string, authorInput: AuthorInput): Promise<Author | undefined>;
     deleteAuthor(id: string): Promise<boolean>;
@@ -26,6 +27,14 @@ export class CreateAuthorRepository implements AuthorRepositoryInterface {
         const result = await this.pool.query(`
             SELECT id, name, nationality FROM authors WHERE id = $1
         `, [id]);
+
+        return result.rows[0];
+    }
+
+    async getAuthorByName(name: string): Promise<Author | undefined> {
+        const result = await this.pool.query(`
+            SELECT id, name, nationality FROM authors WHERE name = $1
+        `, [name]);
 
         return result.rows[0];
     }
