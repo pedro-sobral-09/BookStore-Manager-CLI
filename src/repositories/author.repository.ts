@@ -1,12 +1,12 @@
 import type { Pool } from "pg";
-import { type Author, type AuthorInput } from "../models/author.models.js";
+import { type Author, type AuthorInput, type AuthorUpdateInput } from "../models/author.models.js";
 
-interface AuthorRepositoryInterface {
+export interface AuthorRepositoryInterface {
     createAuthor(authorInput: AuthorInput): Promise<Author | undefined>;
     getAuthorById(id: string): Promise<Author | undefined>;
     getAuthorByName(name: string): Promise<Author | undefined>;
     listAuthors(): Promise<Author[] | undefined>;
-    updateAuthor(id: string, authorInput: AuthorInput): Promise<Author | undefined>;
+    updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author | undefined>;
     deleteAuthor(id: string): Promise<boolean>;
 }
 
@@ -47,13 +47,13 @@ export class CreateAuthorRepository implements AuthorRepositoryInterface {
         return result.rows;
     }
 
-    async updateAuthor(id: string, authorInput: AuthorInput): Promise<Author | undefined> {
+    async updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author | undefined> {
         const result = await this.pool.query(`
             UPDATE authors
             SET name = $1, nationality = $2
             WHERE id = $3
             RETURNING id, name, nationality
-        `, [authorInput.name, authorInput.nationality, id]);
+        `, [authorUpdateInput.name, authorUpdateInput.nationality, id]);
 
         return result.rows[0];
     }
