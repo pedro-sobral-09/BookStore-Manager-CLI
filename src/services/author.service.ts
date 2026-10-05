@@ -1,7 +1,7 @@
 import { type Author, type AuthorInput, type AuthorUpdateInput } from '../models/author.models.js';
 import { type  AuthorRepositoryInterface } from '../repositories/author.repository.js';
 
-interface AuthorServiceInterface {
+export interface AuthorServiceInterface {
     createAuthor(authorInput: AuthorInput): Promise<Author>;
     getAuthorById(id: string): Promise<Author>;
     getAuthorByName(name: string): Promise<Author>;
