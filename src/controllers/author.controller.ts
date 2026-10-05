@@ -14,8 +14,8 @@ export class CreateAuthorController implements AuthorControllerInterface {
     constructor(private authorService: AuthorServiceInterface) {}
 
     async createAuthor(authorInput: AuthorInput): Promise<Author> {
-        if (!authorInput.name || !authorInput.nationality) {
-            throw new Error('Author name or nationality are required');
+        if (!authorInput.name) {
+            throw new Error('Author name is required');
         }
 
         return this.authorService.createAuthor(authorInput);
