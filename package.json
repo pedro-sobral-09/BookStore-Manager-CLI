@@ -5,7 +5,11 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/main.js",
-    "dev": "tsx src/main.ts"
+    "dev": "tsx src/main.ts",
+    "migrate:create": "node-pg-migrate create --migrations-dir src/db/migrations",
+    "migrate:up": "node-pg-migrate up --migrations-dir src/db/migrations",
+    "migrate:down": "node-pg-migrate down --migrations-dir src/db/migrations",
+    "migrate:reset": "node-pg-migrate reset --migrations-dir src/db/migrations"
   },
   "author": "Pedro Sobral",
   "license": "MIT",
