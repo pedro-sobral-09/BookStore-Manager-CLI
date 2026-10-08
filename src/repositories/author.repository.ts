@@ -10,7 +10,7 @@ export interface AuthorRepositoryInterface {
     deleteAuthor(id: string): Promise<boolean>;
 }
 
-export class CreateAuthorRepository implements AuthorRepositoryInterface {
+export class AuthorRepository implements AuthorRepositoryInterface {
   constructor(private pool: Pool) {}
 
   async createAuthor(authorInput: AuthorInput): Promise<Author | undefined> {

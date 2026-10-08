@@ -10,7 +10,7 @@ export interface AuthorServiceInterface {
     deleteAuthor(id: string): Promise<boolean>;
 }
 
-export class CreateAuthorService implements AuthorServiceInterface {
+export class AuthorService implements AuthorServiceInterface {
     constructor(private authorRepository: AuthorRepositoryInterface) {}
     
     async createAuthor(authorInput: AuthorInput): Promise<Author> {

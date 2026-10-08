@@ -1,12 +1,12 @@
 import { pool } from './db/pool.js';
-import { CreateAuthorRepository } from './repositories/author.repository.js';
-import { CreateAuthorService } from './services/author.service.js';
-import { CreateAuthorController } from './controllers/author.controller.js';
-import { CreateAuthorMenu } from './menu/author.menu.js';
+import { AuthorRepository } from './repositories/author.repository.js';
+import { AuthorService } from './services/author.service.js';
+import { AuthorController } from './controllers/author.controller.js';
+import { AuthorMenu } from './menu/author.menu.js';
 
-const authorRepository = new CreateAuthorRepository(pool);
-const authorService = new CreateAuthorService(authorRepository);
-const authorController = new CreateAuthorController(authorService);
-const authorMenu = new CreateAuthorMenu(authorController);
+const authorRepository = new AuthorRepository(pool);
+const authorService = new AuthorService(authorRepository);
+const authorController = new AuthorController(authorService);
+const authorMenu = new AuthorMenu(authorController);
 
 export { authorMenu };
