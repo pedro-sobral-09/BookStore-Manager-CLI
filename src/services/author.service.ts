@@ -83,6 +83,12 @@ export class AuthorService implements AuthorServiceInterface {
         if (!author) {
             throw new Error('Author not found');
         }
+
+        const hasBooks = await this.authorRepository.hasBooksByAuthorId(id);
+
+        if (hasBooks) {
+            throw new Error('Cannot delete author with registered books');
+        }
         
         const deleted = await this.authorRepository.deleteAuthor(id);
         

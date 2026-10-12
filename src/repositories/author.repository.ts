@@ -7,6 +7,7 @@ export interface AuthorRepositoryInterface {
     getAuthorByName(name: string): Promise<Author | undefined>;
     listAuthors(): Promise<Author[] | undefined>;
     updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author | undefined>;
+    hasBooksByAuthorId(authorId: string): Promise<boolean>;
     deleteAuthor(id: string): Promise<boolean>;
 }
 
@@ -63,6 +64,17 @@ export class AuthorRepository implements AuthorRepositoryInterface {
     );
 
     return result.rows[0];
+  }
+
+  async hasBooksByAuthorId(authorId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `
+            SELECT 1 FROM book_authors WHERE author_id = $1 LIMIT 1
+        `,
+      [authorId],
+    );
+
+    return (result.rowCount ?? 0) > 0;
   }
 
   async deleteAuthor(id: string): Promise<boolean> {
