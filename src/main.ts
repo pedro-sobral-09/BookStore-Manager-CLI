@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { rl } from './utils/readline.js';
-import { authorMenu } from './container.js';
+import { authorMenu, bookMenu } from './container.js';
 
 class App {
     constructor() {}
@@ -12,6 +12,7 @@ class App {
             console.clear();
             console.log('\nMain Menu:');
             console.log('1. Author Menu');
+            console.log('2. Book Menu');
             console.log('0. Exit');
 
             const choice = await rl.question('Select an option: ');
@@ -19,6 +20,9 @@ class App {
             switch (choice) {
                 case '1':
                     await authorMenu.showMenu();
+                    break;
+                case '2':
+                    await bookMenu.showMenu();
                     break;
                 case '0':
                     exit = true;
