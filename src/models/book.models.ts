@@ -14,12 +14,12 @@ export interface Book {
 
 export interface BookInput {
     title: string;
-    publicationYear: number;
-    publicationDate: Date;
-    genre: string;
+    publicationYear?: number;
+    publicationDate?: Date;
+    genre?: string;
     available: boolean;
     publisher: string;
-    pageCount: number;
+    pageCount?: number;
     authorIds: string[];
 }
 

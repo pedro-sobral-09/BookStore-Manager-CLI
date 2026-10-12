@@ -17,19 +17,40 @@ export class BookRepository implements BookRepositoryInterface {
         const client = await this.pool.connect();
 
         try {
+            await client.query('BEGIN');
+
             const book = await client.query(`
                 INSERT INTO books (title, publication_year, publication_date, genre, available, publisher, page_count)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING id, title, publication_year AS "publicationYear", publication_date AS "publicationDate", genre, available, publisher, page_count AS "pageCount", created_at AS "createdAt", updated_at AS "updatedAt"
-            `);
-            
-            await client.query(`
-                INSERT INTO book_authors (book_id, author_id)
-                VALUES ($1, $2)
-            `, [book.rows[0].id, bookInput.authorIds]);
+            `, [
+                bookInput.title,
+                bookInput.publicationYear ?? null,
+                bookInput.publicationDate ?? null,
+                bookInput.genre ?? null,
+                bookInput.available,
+                bookInput.publisher,
+                bookInput.pageCount ?? null,
+            ]);
+
+            const created = book.rows[0];
+
+            if (!created) {
+                await client.query('ROLLBACK');
+                return undefined;
+            }
+
+            for (const authorId of bookInput.authorIds) {
+                await client.query(`
+                    INSERT INTO book_authors (book_id, author_id)
+                    VALUES ($1, $2)
+                `, [created.id, authorId]);
+            }
+
+            await client.query('COMMIT');
 
             const bookWithAuthors: Book = {
-                ...book.rows[0],
+                ...created,
                 authorIds: bookInput.authorIds,
             }
 
@@ -47,21 +68,27 @@ export class BookRepository implements BookRepositoryInterface {
         
         try {
             const bookResult = await client.query(`
-                UPDATE books SET updated_at = NOW() WHERE id = $1 RETURNING id, title, publication_year AS "publicationYear", publication_date AS "publicationDate", genre, available, publisher, page_count AS "pageCount", created_at AS "createdAt", updated_at AS "updatedAt"
+                SELECT id, title, publication_year AS "publicationYear", publication_date AS "publicationDate", genre, available, publisher, page_count AS "pageCount", created_at AS "createdAt", updated_at AS "updatedAt"
+                FROM books WHERE id = $1
             `, [id]);
+
+            const book = bookResult.rows[0];
+
+            if (!book) {
+                return undefined;
+            }
 
             const bookAuthorsResult = await client.query(`
                 SELECT author_id FROM book_authors WHERE book_id = $1
             `, [id]);
 
             const bookWithAuthors: Book = {
-                ...bookResult.rows[0],
+                ...book,
                 authorIds: bookAuthorsResult.rows.map(row => row.author_id),
             }
 
             return bookWithAuthors;
         } catch (error) {
-            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
@@ -77,18 +104,23 @@ export class BookRepository implements BookRepositoryInterface {
                 FROM books WHERE title = $1
             `, [title]);
 
+            const book = bookResult.rows[0];
+
+            if (!book) {
+                return undefined;
+            }
+
             const bookAuthorsResult = await client.query(`
                 SELECT author_id FROM book_authors WHERE book_id = $1
-            `, [bookResult.rows[0].id]);
+            `, [book.id]);
 
             const bookWithAuthors: Book = {
-                ...bookResult.rows[0],
+                ...book,
                 authorIds: bookAuthorsResult.rows.map(row => row.author_id),
             }
 
             return bookWithAuthors;
         } catch (error) {
-            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
@@ -119,7 +151,6 @@ export class BookRepository implements BookRepositoryInterface {
 
             return booksWithAuthors;
         } catch (error) {
-            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
@@ -130,6 +161,8 @@ export class BookRepository implements BookRepositoryInterface {
         const client = await this.pool.connect();
 
         try {
+            await client.query('BEGIN');
+
             const bookResult = await client.query(`
                 UPDATE books SET
                     title = COALESCE($1, title),
@@ -143,15 +176,22 @@ export class BookRepository implements BookRepositoryInterface {
                 WHERE id = $8
                 RETURNING id, title, publication_year AS "publicationYear", publication_date AS "publicationDate", genre, available, publisher, page_count AS "pageCount", created_at AS "createdAt", updated_at AS "updatedAt"
             `, [
-                bookUpdateInput.title,
-                bookUpdateInput.publicationYear,
-                bookUpdateInput.publicationDate,
-                bookUpdateInput.genre,
-                bookUpdateInput.available,
-                bookUpdateInput.publisher,
-                bookUpdateInput.pageCount,
+                bookUpdateInput.title ?? null,
+                bookUpdateInput.publicationYear ?? null,
+                bookUpdateInput.publicationDate ?? null,
+                bookUpdateInput.genre ?? null,
+                bookUpdateInput.available ?? null,
+                bookUpdateInput.publisher ?? null,
+                bookUpdateInput.pageCount ?? null,
                 id
             ]);
+
+            const updated = bookResult.rows[0];
+
+            if (!updated) {
+                await client.query('ROLLBACK');
+                return undefined;
+            }
 
             if (bookUpdateInput.authorIds) {
                 await client.query(`
@@ -170,8 +210,10 @@ export class BookRepository implements BookRepositoryInterface {
                 SELECT author_id FROM book_authors WHERE book_id = $1
             `, [id]);
 
+            await client.query('COMMIT');
+
             const bookWithAuthors: Book = {
-                ...bookResult.rows[0],
+                ...updated,
                 authorIds: bookAuthorsResult.rows.map(row => row.author_id),
             }
 
@@ -188,6 +230,8 @@ export class BookRepository implements BookRepositoryInterface {
         const client = await this.pool.connect();
 
         try {
+            await client.query('BEGIN');
+
             await client.query(`
                 DELETE FROM book_authors WHERE book_id = $1
             `, [id]);
@@ -195,6 +239,8 @@ export class BookRepository implements BookRepositoryInterface {
             const result = await client.query(`
                 DELETE FROM books WHERE id = $1
             `, [id]);
+
+            await client.query('COMMIT');
 
             return (result.rowCount ?? 0) > 0;
         } catch (error) {
