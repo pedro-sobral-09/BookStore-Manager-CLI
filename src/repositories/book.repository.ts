@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { type Book, type BookInput, type BookUpdateInput } from "../models/book.models.js";
 
-interface BookRepositoryInterface {
+export interface BookRepositoryInterface {
     createBook(bookInput: BookInput): Promise<Book | undefined>;
     getBookById(id: string): Promise<Book | undefined>;
     getBookByTitle(title: string): Promise<Book | undefined>;
