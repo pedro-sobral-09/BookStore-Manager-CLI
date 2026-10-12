@@ -16,8 +16,8 @@ export class CustomerRepository implements CustomerRepositoryInterface {
     async createCustomer(customerInput: CustomerInput): Promise<Customer | undefined> {
         const result = await this.pool.query(
             `
-            INSERT INTO customers (name, email, phone, birth_date)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO customers (name, email, phone, birth_date, updated_at)
+            VALUES ($1, $2, $3, $4, NOW())
             RETURNING id, name, email, phone, birth_date AS "birthDate", created_at AS "createdAt", updated_at AS "updatedAt"
         `,
             [
