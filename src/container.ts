@@ -36,7 +36,11 @@ const customerController = new CustomerController(customerService);
 const customerMenu = new CustomerMenu(customerController);
 
 const loanRepository = new LoanRepository(pool);
-const loanService = new LoanService(loanRepository, bookRepository, customerRepository);
+const loanService = new LoanService(
+  loanRepository,
+  bookRepository,
+  customerRepository,
+);
 const loanController = new LoanController(loanService);
 const loanMenu = new LoanMenu(loanController);
 

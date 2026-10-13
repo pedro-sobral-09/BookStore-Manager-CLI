@@ -1,101 +1,118 @@
-import { type Author, type AuthorInput, type AuthorUpdateInput } from '../models/author.models.js';
-import { type  AuthorRepositoryInterface } from '../repositories/author.repository.js';
+import {
+  type Author,
+  type AuthorInput,
+  type AuthorUpdateInput,
+} from '../models/author.models.js';
+import { type AuthorRepositoryInterface } from '../repositories/author.repository.js';
 
 export interface AuthorServiceInterface {
-    createAuthor(authorInput: AuthorInput): Promise<Author>;
-    getAuthorById(id: string): Promise<Author>;
-    getAuthorByName(name: string): Promise<Author>;
-    listAuthors(): Promise<Author[]>;
-    updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author>;
-    deleteAuthor(id: string): Promise<boolean>;
+  createAuthor(authorInput: AuthorInput): Promise<Author>;
+  getAuthorById(id: string): Promise<Author>;
+  getAuthorByName(name: string): Promise<Author>;
+  listAuthors(): Promise<Author[]>;
+  updateAuthor(
+    id: string,
+    authorUpdateInput: AuthorUpdateInput,
+  ): Promise<Author>;
+  deleteAuthor(id: string): Promise<boolean>;
 }
 
 export class AuthorService implements AuthorServiceInterface {
-    constructor(private authorRepository: AuthorRepositoryInterface) {}
-    
-    async createAuthor(authorInput: AuthorInput): Promise<Author> {
-        const authorExisting = await this.authorRepository.getAuthorByName(authorInput.name);
-        
-        if (authorExisting) {
-            throw new Error('Author already exists');
-        }
+  constructor(private authorRepository: AuthorRepositoryInterface) {}
 
-        const author = await this.authorRepository.createAuthor(authorInput);
+  async createAuthor(authorInput: AuthorInput): Promise<Author> {
+    const authorExisting = await this.authorRepository.getAuthorByName(
+      authorInput.name,
+    );
 
-        if (!author) {
-            throw new Error('Failed to create author');
-        }
-
-        return author;
+    if (authorExisting) {
+      throw new Error('Author already exists');
     }
 
-    async getAuthorById(id: string): Promise<Author> {
-        const author = await this.authorRepository.getAuthorById(id);
+    const author = await this.authorRepository.createAuthor(authorInput);
 
-        if (!author) {
-            throw new Error('Author not found');
-        }
-
-        return author;
+    if (!author) {
+      throw new Error('Failed to create author');
     }
 
-    async getAuthorByName(name: string): Promise<Author> {
-        const author = await this.authorRepository.getAuthorByName(name);
+    return author;
+  }
 
-        if (!author) {
-            throw new Error('Author not found');
-        }
+  async getAuthorById(id: string): Promise<Author> {
+    const author = await this.authorRepository.getAuthorById(id);
 
-        return author;
+    if (!author) {
+      throw new Error('Author not found');
     }
 
-    async listAuthors(): Promise<Author[]> {
-        const authors = await this.authorRepository.listAuthors();
+    return author;
+  }
 
-        if (!authors) {
-            throw new Error('Failed to list authors');
-        }
+  async getAuthorByName(name: string): Promise<Author> {
+    const author = await this.authorRepository.getAuthorByName(name);
 
-        return authors;
+    if (!author) {
+      throw new Error('Author not found');
     }
 
-    async updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author> {
-        if (authorUpdateInput.name) {
-            const authorExisting = await this.authorRepository.getAuthorByName(authorUpdateInput.name);
-            
-            if (authorExisting && authorExisting.id !== id) {
-                throw new Error('Author with this name already exists');
-            }
-        }
+    return author;
+  }
 
-        const author = await this.authorRepository.updateAuthor(id, authorUpdateInput);
-        
-        if (!author) {
-            throw new Error('Failed to update author');
-        }
+  async listAuthors(): Promise<Author[]> {
+    const authors = await this.authorRepository.listAuthors();
 
-        return author;
+    if (!authors) {
+      throw new Error('Failed to list authors');
     }
 
-    async deleteAuthor(id: string): Promise<boolean> {
-        const author = await this.authorRepository.getAuthorById(id);
+    return authors;
+  }
 
-        if (!author) {
-            throw new Error('Author not found');
-        }
+  async updateAuthor(
+    id: string,
+    authorUpdateInput: AuthorUpdateInput,
+  ): Promise<Author> {
+    if (authorUpdateInput.name) {
+      const authorExisting = await this.authorRepository.getAuthorByName(
+        authorUpdateInput.name,
+      );
 
-        const hasBooks = await this.authorRepository.hasBooksByAuthorId(id);
-
-        if (hasBooks) {
-            throw new Error('Cannot delete author with registered books');
-        }
-        
-        const deleted = await this.authorRepository.deleteAuthor(id);
-        
-        if (!deleted) {
-            throw new Error('Failed to delete author');
-        }
-
-        return deleted;
+      if (authorExisting && authorExisting.id !== id) {
+        throw new Error('Author with this name already exists');
+      }
     }
+
+    const author = await this.authorRepository.updateAuthor(
+      id,
+      authorUpdateInput,
+    );
+
+    if (!author) {
+      throw new Error('Failed to update author');
+    }
+
+    return author;
+  }
+
+  async deleteAuthor(id: string): Promise<boolean> {
+    const author = await this.authorRepository.getAuthorById(id);
+
+    if (!author) {
+      throw new Error('Author not found');
+    }
+
+    const hasBooks = await this.authorRepository.hasBooksByAuthorId(id);
+
+    if (hasBooks) {
+      throw new Error('Cannot delete author with registered books');
+    }
+
+    const deleted = await this.authorRepository.deleteAuthor(id);
+
+    if (!deleted) {
+      throw new Error('Failed to delete author');
+    }
+
+    return deleted;
+  }
 }

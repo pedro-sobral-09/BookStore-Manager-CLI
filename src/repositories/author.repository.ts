@@ -1,14 +1,21 @@
-import type { Pool } from "pg";
-import { type Author, type AuthorInput, type AuthorUpdateInput } from "../models/author.models.js";
+import type { Pool } from 'pg';
+import {
+  type Author,
+  type AuthorInput,
+  type AuthorUpdateInput,
+} from '../models/author.models.js';
 
 export interface AuthorRepositoryInterface {
-    createAuthor(authorInput: AuthorInput): Promise<Author | undefined>;
-    getAuthorById(id: string): Promise<Author | undefined>;
-    getAuthorByName(name: string): Promise<Author | undefined>;
-    listAuthors(): Promise<Author[] | undefined>;
-    updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author | undefined>;
-    hasBooksByAuthorId(authorId: string): Promise<boolean>;
-    deleteAuthor(id: string): Promise<boolean>;
+  createAuthor(authorInput: AuthorInput): Promise<Author | undefined>;
+  getAuthorById(id: string): Promise<Author | undefined>;
+  getAuthorByName(name: string): Promise<Author | undefined>;
+  listAuthors(): Promise<Author[] | undefined>;
+  updateAuthor(
+    id: string,
+    authorUpdateInput: AuthorUpdateInput,
+  ): Promise<Author | undefined>;
+  hasBooksByAuthorId(authorId: string): Promise<boolean>;
+  deleteAuthor(id: string): Promise<boolean>;
 }
 
 export class AuthorRepository implements AuthorRepositoryInterface {
@@ -57,7 +64,10 @@ export class AuthorRepository implements AuthorRepositoryInterface {
     return result.rows;
   }
 
-  async updateAuthor(id: string, authorUpdateInput: AuthorUpdateInput): Promise<Author | undefined> {
+  async updateAuthor(
+    id: string,
+    authorUpdateInput: AuthorUpdateInput,
+  ): Promise<Author | undefined> {
     const result = await this.pool.query(
       `UPDATE authors SET name = COALESCE($1, name), nationality = COALESCE($2, nationality) WHERE id = $3 RETURNING id, name, nationality`,
       [authorUpdateInput.name, authorUpdateInput.nationality, id],
@@ -84,7 +94,7 @@ export class AuthorRepository implements AuthorRepositoryInterface {
         `,
       [id],
     );
-    
+
     return (result.rowCount ?? 0) > 0;
   }
 }

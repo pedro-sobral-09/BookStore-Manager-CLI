@@ -46,6 +46,7 @@ CUSTOMERS (id, name, email, phone) ─┘ 1:N
 ```
 
 ### Key Constraints:
+
 - **`loan_status`**: ENUM (`active`, `returned`).
 - **Partial Unique Index**: Only one active loan per book at any given time.
 - **Check Constraints**: Active loans must not have a return date; returned loans must have a return date on or after the loan date.
@@ -87,6 +88,7 @@ src/
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
+
 - **Node.js** (v18+)
 - **PostgreSQL** (v14+)
 
@@ -146,13 +148,14 @@ When launched, the interactive main menu provides the following options:
 3. **Customer Menu**: Manage customer profiles and email lookups.
 4. **Loan Menu**: Register loans, return books, and view loan history.
 5. **Report Menu**: Run library statistics and analytical reports.
-0. **Exit**: Terminate the CLI application.
+6. **Exit**: Terminate the CLI application.
 
 ---
 
 ## 🔀 Git Workflow
 
 Developed following **GitFlow** and **Semantic Commits**:
+
 - `main`: Production-ready code.
 - `develop`: Development integration branch.
 - `feat/*`: Feature branches (`feat/authors`, `feat/books`, `feat/customers`, `feat/loans`, `feat/reports`).

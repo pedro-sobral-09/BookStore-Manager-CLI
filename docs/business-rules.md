@@ -52,6 +52,7 @@
 - RN-028 — Loan devolvido não pode ser devolvido novamente
 - RN-029 — Status do Loan deve mudar após a devolução
 - RN-030 — Loan ativo não possui data de devolução
+
 * RN-031 — Loan devolvido deve possuir data de devolução
 * RN-032 — Data de devolução não pode ser anterior à data do Loan
 

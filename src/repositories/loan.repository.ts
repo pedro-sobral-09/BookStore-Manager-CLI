@@ -1,20 +1,23 @@
-import { type Pool, type PoolClient } from "pg";
+import { type Pool, type PoolClient } from 'pg';
 import {
-    type Loan,
-    type LoanInput,
-    type LoanUpdateInput,
-    type LoanWithDetails,
-    type LoanStatus,
-} from "../models/loan.models.js";
+  type Loan,
+  type LoanInput,
+  type LoanUpdateInput,
+  type LoanWithDetails,
+  type LoanStatus,
+} from '../models/loan.models.js';
 
 export interface LoanRepositoryInterface {
-    createLoan(loanInput: LoanInput): Promise<Loan | undefined>;
-    getLoanById(id: string): Promise<LoanWithDetails | undefined>;
-    getActiveLoanByBookId(bookId: string): Promise<Loan | undefined>;
-    listLoans(status?: LoanStatus): Promise<LoanWithDetails[] | undefined>;
-    updateLoan(id: string, loanUpdateInput: LoanUpdateInput): Promise<Loan | undefined>;
-    returnLoan(id: string, returnDate?: Date): Promise<Loan | undefined>;
-    deleteLoan(id: string): Promise<boolean>;
+  createLoan(loanInput: LoanInput): Promise<Loan | undefined>;
+  getLoanById(id: string): Promise<LoanWithDetails | undefined>;
+  getActiveLoanByBookId(bookId: string): Promise<Loan | undefined>;
+  listLoans(status?: LoanStatus): Promise<LoanWithDetails[] | undefined>;
+  updateLoan(
+    id: string,
+    loanUpdateInput: LoanUpdateInput,
+  ): Promise<Loan | undefined>;
+  returnLoan(id: string, returnDate?: Date): Promise<Loan | undefined>;
+  deleteLoan(id: string): Promise<boolean>;
 }
 
 const LOAN_COLUMNS = `
@@ -65,46 +68,49 @@ const LOAN_WITH_DETAILS_SELECT = `
 const LOAN_WITH_DETAILS_GROUP_BY = `GROUP BY l.id, c.id, b.id`;
 
 export class LoanRepository implements LoanRepositoryInterface {
-    constructor(private pool: Pool) {}
+  constructor(private pool: Pool) {}
 
-    private mapLoanWithDetails(row: any): LoanWithDetails {
-        return {
-            id: row.id,
-            customerId: row.customerId,
-            bookId: row.bookId,
-            loanDate: row.loanDate,
-            returnDate: row.returnDate ?? null,
-            status: row.status,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt ?? undefined,
-            customer: {
-                id: row.customerId,
-                name: row.customerName,
-                email: row.customerEmail,
-                phone: row.customerPhone ?? undefined,
-                birthDate: row.customerBirthDate ?? undefined,
-                createdAt: row.customerCreatedAt,
-                updatedAt: row.customerUpdatedAt,
-            },
-            book: {
-                id: row.bookId,
-                title: row.bookTitle,
-                publicationYear: row.bookPublicationYear,
-                publisher: row.bookPublisher,
-                publicationDate: row.bookPublicationDate ?? undefined,
-                available: row.bookAvailable,
-                genre: row.bookGenre,
-                pageCount: row.bookPageCount,
-                createdAt: row.bookCreatedAt,
-                updatedAt: row.bookUpdatedAt,
-                authorIds: row.bookAuthorIds ?? [],
-            },
-        };
-    }
+  private mapLoanWithDetails(row: any): LoanWithDetails {
+    return {
+      id: row.id,
+      customerId: row.customerId,
+      bookId: row.bookId,
+      loanDate: row.loanDate,
+      returnDate: row.returnDate ?? null,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt ?? undefined,
+      customer: {
+        id: row.customerId,
+        name: row.customerName,
+        email: row.customerEmail,
+        phone: row.customerPhone ?? undefined,
+        birthDate: row.customerBirthDate ?? undefined,
+        createdAt: row.customerCreatedAt,
+        updatedAt: row.customerUpdatedAt,
+      },
+      book: {
+        id: row.bookId,
+        title: row.bookTitle,
+        publicationYear: row.bookPublicationYear,
+        publisher: row.bookPublisher,
+        publicationDate: row.bookPublicationDate ?? undefined,
+        available: row.bookAvailable,
+        genre: row.bookGenre,
+        pageCount: row.bookPageCount,
+        createdAt: row.bookCreatedAt,
+        updatedAt: row.bookUpdatedAt,
+        authorIds: row.bookAuthorIds ?? [],
+      },
+    };
+  }
 
-    private async syncBookAvailability(client: PoolClient, bookIds: string[]): Promise<void> {
-        await client.query(
-            `
+  private async syncBookAvailability(
+    client: PoolClient,
+    bookIds: string[],
+  ): Promise<void> {
+    await client.query(
+      `
             UPDATE books SET
                 available = NOT EXISTS (
                     SELECT 1 FROM loans WHERE loans.book_id = books.id AND loans.status = 'active'
@@ -112,121 +118,124 @@ export class LoanRepository implements LoanRepositoryInterface {
                 updated_at = NOW()
             WHERE id = ANY($1::uuid[])
             `,
-            [bookIds],
-        );
+      [bookIds],
+    );
+  }
+
+  private translateError(error: unknown): unknown {
+    if ((error as { code?: string }).code === '23505') {
+      return new Error('Book already has an active loan');
     }
 
-    private translateError(error: unknown): unknown {
-        if ((error as { code?: string }).code === '23505') {
-            return new Error('Book already has an active loan');
-        }
+    return error;
+  }
 
-        return error;
-    }
+  async createLoan(loanInput: LoanInput): Promise<Loan | undefined> {
+    const client = await this.pool.connect();
 
-    async createLoan(loanInput: LoanInput): Promise<Loan | undefined> {
-        const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
 
-        try {
-            await client.query('BEGIN');
-
-            const result = await client.query(
-                `
+      const result = await client.query(
+        `
                 INSERT INTO loans (customer_id, book_id, loan_date, status, updated_at)
                 VALUES ($1, $2, COALESCE($3, CURRENT_DATE), COALESCE($4::loan_status, 'active'::loan_status), NOW())
                 RETURNING ${LOAN_COLUMNS}
                 `,
-                [
-                    loanInput.customerId,
-                    loanInput.bookId,
-                    loanInput.loanDate ?? null,
-                    loanInput.status ?? null,
-                ],
-            );
+        [
+          loanInput.customerId,
+          loanInput.bookId,
+          loanInput.loanDate ?? null,
+          loanInput.status ?? null,
+        ],
+      );
 
-            const loan = result.rows[0];
+      const loan = result.rows[0];
 
-            if (!loan) {
-                await client.query('ROLLBACK');
-                return undefined;
-            }
+      if (!loan) {
+        await client.query('ROLLBACK');
+        return undefined;
+      }
 
-            await this.syncBookAvailability(client, [loan.bookId]);
+      await this.syncBookAvailability(client, [loan.bookId]);
 
-            await client.query('COMMIT');
+      await client.query('COMMIT');
 
-            return loan;
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw this.translateError(error);
-        } finally {
-            client.release();
-        }
+      return loan;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw this.translateError(error);
+    } finally {
+      client.release();
     }
+  }
 
-    async getLoanById(id: string): Promise<LoanWithDetails | undefined> {
-        const result = await this.pool.query(
-            `
+  async getLoanById(id: string): Promise<LoanWithDetails | undefined> {
+    const result = await this.pool.query(
+      `
             ${LOAN_WITH_DETAILS_SELECT}
             WHERE l.id = $1
             ${LOAN_WITH_DETAILS_GROUP_BY}
             LIMIT 1
             `,
-            [id],
-        );
+      [id],
+    );
 
-        const row = result.rows[0];
-        return row ? this.mapLoanWithDetails(row) : undefined;
-    }
+    const row = result.rows[0];
+    return row ? this.mapLoanWithDetails(row) : undefined;
+  }
 
-    async getActiveLoanByBookId(bookId: string): Promise<Loan | undefined> {
-        const result = await this.pool.query(
-            `
+  async getActiveLoanByBookId(bookId: string): Promise<Loan | undefined> {
+    const result = await this.pool.query(
+      `
             SELECT ${LOAN_COLUMNS}
             FROM loans
             WHERE book_id = $1 AND status = 'active'
             LIMIT 1
             `,
-            [bookId],
-        );
+      [bookId],
+    );
 
-        return result.rows[0];
-    }
+    return result.rows[0];
+  }
 
-    async listLoans(status?: LoanStatus): Promise<LoanWithDetails[] | undefined> {
-        const result = await this.pool.query(
-            `
+  async listLoans(status?: LoanStatus): Promise<LoanWithDetails[] | undefined> {
+    const result = await this.pool.query(
+      `
             ${LOAN_WITH_DETAILS_SELECT}
             WHERE ($1::loan_status IS NULL OR l.status = $1::loan_status)
             ${LOAN_WITH_DETAILS_GROUP_BY}
             ORDER BY l.created_at DESC
             `,
-            [status ?? null],
-        );
+      [status ?? null],
+    );
 
-        return result.rows.map((row) => this.mapLoanWithDetails(row));
-    }
+    return result.rows.map((row) => this.mapLoanWithDetails(row));
+  }
 
-    async updateLoan(id: string, loanUpdateInput: LoanUpdateInput): Promise<Loan | undefined> {
-        const client = await this.pool.connect();
+  async updateLoan(
+    id: string,
+    loanUpdateInput: LoanUpdateInput,
+  ): Promise<Loan | undefined> {
+    const client = await this.pool.connect();
 
-        try {
-            await client.query('BEGIN');
+    try {
+      await client.query('BEGIN');
 
-            const previous = await client.query(
-                `SELECT book_id AS "bookId" FROM loans WHERE id = $1 FOR UPDATE`,
-                [id],
-            );
+      const previous = await client.query(
+        `SELECT book_id AS "bookId" FROM loans WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
 
-            const previousBookId: string | undefined = previous.rows[0]?.bookId;
+      const previousBookId: string | undefined = previous.rows[0]?.bookId;
 
-            if (!previousBookId) {
-                await client.query('ROLLBACK');
-                return undefined;
-            }
+      if (!previousBookId) {
+        await client.query('ROLLBACK');
+        return undefined;
+      }
 
-            const result = await client.query(
-                `
+      const result = await client.query(
+        `
                 UPDATE loans SET
                     customer_id = COALESCE($1, customer_id),
                     book_id = COALESCE($2, book_id),
@@ -237,45 +246,47 @@ export class LoanRepository implements LoanRepositoryInterface {
                 WHERE id = $7
                 RETURNING ${LOAN_COLUMNS}
                 `,
-                [
-                    loanUpdateInput.customerId ?? null,
-                    loanUpdateInput.bookId ?? null,
-                    loanUpdateInput.loanDate ?? null,
-                    loanUpdateInput.returnDate !== undefined,
-                    loanUpdateInput.returnDate ?? null,
-                    loanUpdateInput.status ?? null,
-                    id,
-                ],
-            );
+        [
+          loanUpdateInput.customerId ?? null,
+          loanUpdateInput.bookId ?? null,
+          loanUpdateInput.loanDate ?? null,
+          loanUpdateInput.returnDate !== undefined,
+          loanUpdateInput.returnDate ?? null,
+          loanUpdateInput.status ?? null,
+          id,
+        ],
+      );
 
-            const loan = result.rows[0];
+      const loan = result.rows[0];
 
-            if (!loan) {
-                await client.query('ROLLBACK');
-                return undefined;
-            }
+      if (!loan) {
+        await client.query('ROLLBACK');
+        return undefined;
+      }
 
-            await this.syncBookAvailability(client, [...new Set([previousBookId, loan.bookId])]);
+      await this.syncBookAvailability(client, [
+        ...new Set([previousBookId, loan.bookId]),
+      ]);
 
-            await client.query('COMMIT');
+      await client.query('COMMIT');
 
-            return loan;
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw this.translateError(error);
-        } finally {
-            client.release();
-        }
+      return loan;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw this.translateError(error);
+    } finally {
+      client.release();
     }
+  }
 
-    async returnLoan(id: string, returnDate?: Date): Promise<Loan | undefined> {
-        const client = await this.pool.connect();
+  async returnLoan(id: string, returnDate?: Date): Promise<Loan | undefined> {
+    const client = await this.pool.connect();
 
-        try {
-            await client.query('BEGIN');
+    try {
+      await client.query('BEGIN');
 
-            const result = await client.query(
-                `
+      const result = await client.query(
+        `
                 UPDATE loans SET
                     return_date = COALESCE($1, CURRENT_DATE),
                     status = 'returned'::loan_status,
@@ -283,57 +294,57 @@ export class LoanRepository implements LoanRepositoryInterface {
                 WHERE id = $2
                 RETURNING ${LOAN_COLUMNS}
                 `,
-                [returnDate ?? null, id],
-            );
+        [returnDate ?? null, id],
+      );
 
-            const loan = result.rows[0];
+      const loan = result.rows[0];
 
-            if (!loan) {
-                await client.query('ROLLBACK');
-                return undefined;
-            }
+      if (!loan) {
+        await client.query('ROLLBACK');
+        return undefined;
+      }
 
-            await this.syncBookAvailability(client, [loan.bookId]);
+      await this.syncBookAvailability(client, [loan.bookId]);
 
-            await client.query('COMMIT');
+      await client.query('COMMIT');
 
-            return loan;
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
+      return loan;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
+  }
 
-    async deleteLoan(id: string): Promise<boolean> {
-        const client = await this.pool.connect();
+  async deleteLoan(id: string): Promise<boolean> {
+    const client = await this.pool.connect();
 
-        try {
-            await client.query('BEGIN');
+    try {
+      await client.query('BEGIN');
 
-            const result = await client.query(
-                `DELETE FROM loans WHERE id = $1 RETURNING book_id AS "bookId"`,
-                [id],
-            );
+      const result = await client.query(
+        `DELETE FROM loans WHERE id = $1 RETURNING book_id AS "bookId"`,
+        [id],
+      );
 
-            const deleted = result.rows[0];
+      const deleted = result.rows[0];
 
-            if (!deleted) {
-                await client.query('ROLLBACK');
-                return false;
-            }
+      if (!deleted) {
+        await client.query('ROLLBACK');
+        return false;
+      }
 
-            await this.syncBookAvailability(client, [deleted.bookId]);
+      await this.syncBookAvailability(client, [deleted.bookId]);
 
-            await client.query('COMMIT');
+      await client.query('COMMIT');
 
-            return true;
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
+  }
 }

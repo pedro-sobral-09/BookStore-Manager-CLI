@@ -123,7 +123,7 @@ export const up = (pgm) => {
       constraints: {
         primaryKey: ['book_id', 'author_id'],
       },
-    }
+    },
   );
 
   // Tabela: loans

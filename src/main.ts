@@ -1,53 +1,59 @@
-import "dotenv/config";
+import 'dotenv/config';
 import { rl } from './utils/readline.js';
-import { authorMenu, bookMenu, customerMenu, loanMenu, reportMenu } from './container.js';
+import {
+  authorMenu,
+  bookMenu,
+  customerMenu,
+  loanMenu,
+  reportMenu,
+} from './container.js';
 
 class App {
-    constructor() {}
+  constructor() {}
 
-    async start(): Promise<void> {
-        let exit = false;
-        
-        while (!exit) {
-            console.clear();
-            console.log('\nMain Menu:');
-            console.log('1. Author Menu');
-            console.log('2. Book Menu');
-            console.log('3. Customer Menu');
-            console.log('4. Loan Menu');
-            console.log('5. Report Menu');
-            console.log('0. Exit');
+  async start(): Promise<void> {
+    let exit = false;
 
-            const choice = await rl.question('Select an option: ');
+    while (!exit) {
+      console.clear();
+      console.log('\nMain Menu:');
+      console.log('1. Author Menu');
+      console.log('2. Book Menu');
+      console.log('3. Customer Menu');
+      console.log('4. Loan Menu');
+      console.log('5. Report Menu');
+      console.log('0. Exit');
 
-            switch (choice) {
-                case '1':
-                    await authorMenu.showMenu();
-                    break;
-                case '2':
-                    await bookMenu.showMenu();
-                    break;
-                case '3':
-                    await customerMenu.showMenu();
-                    break;
-                case '4':
-                    await loanMenu.showMenu();
-                    break;
-                case '5':
-                    await reportMenu.showMenu();
-                    break;
-                case '0':
-                    exit = true;
-                    console.log('Exiting the application...');
-                    break;
-                default:
-                    await rl.question('Invalid option. Please try again.');
-                    break;
-            }
-        }
-        
-        rl.close();
+      const choice = await rl.question('Select an option: ');
+
+      switch (choice) {
+        case '1':
+          await authorMenu.showMenu();
+          break;
+        case '2':
+          await bookMenu.showMenu();
+          break;
+        case '3':
+          await customerMenu.showMenu();
+          break;
+        case '4':
+          await loanMenu.showMenu();
+          break;
+        case '5':
+          await reportMenu.showMenu();
+          break;
+        case '0':
+          exit = true;
+          console.log('Exiting the application...');
+          break;
+        default:
+          await rl.question('Invalid option. Please try again.');
+          break;
+      }
     }
+
+    rl.close();
+  }
 }
 
 const app = new App();
