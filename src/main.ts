@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { rl } from './utils/readline.js';
-import { authorMenu, bookMenu, customerMenu, loanMenu } from './container.js';
+import { authorMenu, bookMenu, customerMenu, loanMenu, reportMenu } from './container.js';
 
 class App {
     constructor() {}
@@ -15,6 +15,7 @@ class App {
             console.log('2. Book Menu');
             console.log('3. Customer Menu');
             console.log('4. Loan Menu');
+            console.log('5. Report Menu');
             console.log('0. Exit');
 
             const choice = await rl.question('Select an option: ');
@@ -31,6 +32,9 @@ class App {
                     break;
                 case '4':
                     await loanMenu.showMenu();
+                    break;
+                case '5':
+                    await reportMenu.showMenu();
                     break;
                 case '0':
                     exit = true;
