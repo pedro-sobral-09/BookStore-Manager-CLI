@@ -50,5 +50,11 @@ CREATE TABLE loans (
     return_date DATE,
     status loan_status NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT loans_return_date_matches_status CHECK (
+        (status = 'active' AND return_date IS NULL) OR (status = 'returned' AND return_date IS NOT NULL)
+    ),
+    CONSTRAINT loans_return_date_after_loan_date CHECK (return_date IS NULL OR return_date >= loan_date)
 );
+
+CREATE UNIQUE INDEX one_active_loan_per_book ON loans (book_id) WHERE status = 'active';
