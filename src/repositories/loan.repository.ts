@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { type Pool, type PoolClient } from "pg";
 import {
     type Loan,
     type LoanInput,
@@ -102,22 +102,66 @@ export class LoanRepository implements LoanRepositoryInterface {
         };
     }
 
-    async createLoan(loanInput: LoanInput): Promise<Loan | undefined> {
-        const result = await this.pool.query(
+    private async syncBookAvailability(client: PoolClient, bookIds: string[]): Promise<void> {
+        await client.query(
             `
-            INSERT INTO loans (customer_id, book_id, loan_date, status, updated_at)
-            VALUES ($1, $2, COALESCE($3, CURRENT_DATE), COALESCE($4::loan_status, 'active'::loan_status), NOW())
-            RETURNING ${LOAN_COLUMNS}
+            UPDATE books SET
+                available = NOT EXISTS (
+                    SELECT 1 FROM loans WHERE loans.book_id = books.id AND loans.status = 'active'
+                ),
+                updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
             `,
-            [
-                loanInput.customerId,
-                loanInput.bookId,
-                loanInput.loanDate ?? null,
-                loanInput.status ?? null,
-            ],
+            [bookIds],
         );
+    }
 
-        return result.rows[0];
+    private translateError(error: unknown): unknown {
+        if ((error as { code?: string }).code === '23505') {
+            return new Error('Book already has an active loan');
+        }
+
+        return error;
+    }
+
+    async createLoan(loanInput: LoanInput): Promise<Loan | undefined> {
+        const client = await this.pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const result = await client.query(
+                `
+                INSERT INTO loans (customer_id, book_id, loan_date, status, updated_at)
+                VALUES ($1, $2, COALESCE($3, CURRENT_DATE), COALESCE($4::loan_status, 'active'::loan_status), NOW())
+                RETURNING ${LOAN_COLUMNS}
+                `,
+                [
+                    loanInput.customerId,
+                    loanInput.bookId,
+                    loanInput.loanDate ?? null,
+                    loanInput.status ?? null,
+                ],
+            );
+
+            const loan = result.rows[0];
+
+            if (!loan) {
+                await client.query('ROLLBACK');
+                return undefined;
+            }
+
+            await this.syncBookAvailability(client, [loan.bookId]);
+
+            await client.query('COMMIT');
+
+            return loan;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw this.translateError(error);
+        } finally {
+            client.release();
+        }
     }
 
     async getLoanById(id: string): Promise<LoanWithDetails | undefined> {
@@ -164,50 +208,132 @@ export class LoanRepository implements LoanRepositoryInterface {
     }
 
     async updateLoan(id: string, loanUpdateInput: LoanUpdateInput): Promise<Loan | undefined> {
-        const result = await this.pool.query(
-            `
-            UPDATE loans SET
-                customer_id = COALESCE($1, customer_id),
-                book_id = COALESCE($2, book_id),
-                loan_date = COALESCE($3, loan_date),
-                return_date = COALESCE($4, return_date),
-                status = COALESCE($5::loan_status, status),
-                updated_at = NOW()
-            WHERE id = $6
-            RETURNING ${LOAN_COLUMNS}
-            `,
-            [
-                loanUpdateInput.customerId ?? null,
-                loanUpdateInput.bookId ?? null,
-                loanUpdateInput.loanDate ?? null,
-                loanUpdateInput.returnDate ?? null,
-                loanUpdateInput.status ?? null,
-                id,
-            ],
-        );
+        const client = await this.pool.connect();
 
-        return result.rows[0];
+        try {
+            await client.query('BEGIN');
+
+            const previous = await client.query(
+                `SELECT book_id AS "bookId" FROM loans WHERE id = $1 FOR UPDATE`,
+                [id],
+            );
+
+            const previousBookId: string | undefined = previous.rows[0]?.bookId;
+
+            if (!previousBookId) {
+                await client.query('ROLLBACK');
+                return undefined;
+            }
+
+            const result = await client.query(
+                `
+                UPDATE loans SET
+                    customer_id = COALESCE($1, customer_id),
+                    book_id = COALESCE($2, book_id),
+                    loan_date = COALESCE($3, loan_date),
+                    return_date = CASE WHEN $4::boolean THEN $5::date ELSE return_date END,
+                    status = COALESCE($6::loan_status, status),
+                    updated_at = NOW()
+                WHERE id = $7
+                RETURNING ${LOAN_COLUMNS}
+                `,
+                [
+                    loanUpdateInput.customerId ?? null,
+                    loanUpdateInput.bookId ?? null,
+                    loanUpdateInput.loanDate ?? null,
+                    loanUpdateInput.returnDate !== undefined,
+                    loanUpdateInput.returnDate ?? null,
+                    loanUpdateInput.status ?? null,
+                    id,
+                ],
+            );
+
+            const loan = result.rows[0];
+
+            if (!loan) {
+                await client.query('ROLLBACK');
+                return undefined;
+            }
+
+            await this.syncBookAvailability(client, [...new Set([previousBookId, loan.bookId])]);
+
+            await client.query('COMMIT');
+
+            return loan;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw this.translateError(error);
+        } finally {
+            client.release();
+        }
     }
 
     async returnLoan(id: string, returnDate?: Date): Promise<Loan | undefined> {
-        const result = await this.pool.query(
-            `
-            UPDATE loans SET
-                return_date = COALESCE($1, CURRENT_DATE),
-                status = 'returned'::loan_status,
-                updated_at = NOW()
-            WHERE id = $2
-            RETURNING ${LOAN_COLUMNS}
-            `,
-            [returnDate ?? null, id],
-        );
+        const client = await this.pool.connect();
 
-        return result.rows[0];
+        try {
+            await client.query('BEGIN');
+
+            const result = await client.query(
+                `
+                UPDATE loans SET
+                    return_date = COALESCE($1, CURRENT_DATE),
+                    status = 'returned'::loan_status,
+                    updated_at = NOW()
+                WHERE id = $2
+                RETURNING ${LOAN_COLUMNS}
+                `,
+                [returnDate ?? null, id],
+            );
+
+            const loan = result.rows[0];
+
+            if (!loan) {
+                await client.query('ROLLBACK');
+                return undefined;
+            }
+
+            await this.syncBookAvailability(client, [loan.bookId]);
+
+            await client.query('COMMIT');
+
+            return loan;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     async deleteLoan(id: string): Promise<boolean> {
-        const result = await this.pool.query(`DELETE FROM loans WHERE id = $1`, [id]);
+        const client = await this.pool.connect();
 
-        return (result.rowCount ?? 0) > 0;
+        try {
+            await client.query('BEGIN');
+
+            const result = await client.query(
+                `DELETE FROM loans WHERE id = $1 RETURNING book_id AS "bookId"`,
+                [id],
+            );
+
+            const deleted = result.rows[0];
+
+            if (!deleted) {
+                await client.query('ROLLBACK');
+                return false;
+            }
+
+            await this.syncBookAvailability(client, [deleted.bookId]);
+
+            await client.query('COMMIT');
+
+            return true;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 }

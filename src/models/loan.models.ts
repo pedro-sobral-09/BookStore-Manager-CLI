@@ -28,7 +28,7 @@ export interface LoanUpdateInput {
     customerId?: string;
     bookId?: string;
     loanDate?: Date;
-    returnDate?: Date;
+    returnDate?: Date | null;
     status?: LoanStatus;
 }
 
