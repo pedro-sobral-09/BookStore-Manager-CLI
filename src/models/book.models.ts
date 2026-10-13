@@ -28,7 +28,6 @@ export interface BookUpdateInput {
     publicationYear?: number;
     publicationDate?: Date;
     genre?: string;
-    available?: boolean;
     publisher?: string;
     pageCount?: number;
     authorIds?: string[];   

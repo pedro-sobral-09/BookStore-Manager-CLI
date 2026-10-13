@@ -142,7 +142,6 @@ export class BookController implements BookControllerInterface {
             const updatePublicationYear = await rl.question('Enter new publication year (leave blank to keep current): ');
             const updatePublicationDate = await rl.question('Enter new publication date YYYY-MM-DD (leave blank to keep current): ');
             const updateGenre = await rl.question('Enter new genre (leave blank to keep current): ');
-            const updateAvailable = await rl.question('Is the book available? true/false (leave blank to keep current): ');
             const updatePageCount = await rl.question('Enter new page count (leave blank to keep current): ');
             const updateAuthorIds = await rl.question('Enter new author IDs comma-separated (leave blank to keep current): ');
 
@@ -166,10 +165,6 @@ export class BookController implements BookControllerInterface {
 
             if (updateGenre) {
                 bookUpdateInput.genre = updateGenre;
-            }
-
-            if (updateAvailable) {
-                bookUpdateInput.available = updateAvailable.toLowerCase() !== 'false';
             }
 
             if (updatePageCount) {

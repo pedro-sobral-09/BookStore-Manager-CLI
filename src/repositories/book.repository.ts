@@ -169,18 +169,16 @@ export class BookRepository implements BookRepositoryInterface {
                     publication_year = COALESCE($2, publication_year),
                     publication_date = COALESCE($3, publication_date),
                     genre = COALESCE($4, genre),
-                    available = COALESCE($5, available),
-                    publisher = COALESCE($6, publisher),
-                    page_count = COALESCE($7, page_count),
+                    publisher = COALESCE($5, publisher),
+                    page_count = COALESCE($6, page_count),
                     updated_at = NOW()
-                WHERE id = $8
+                WHERE id = $7
                 RETURNING id, title, publication_year AS "publicationYear", publication_date AS "publicationDate", genre, available, publisher, page_count AS "pageCount", created_at AS "createdAt", updated_at AS "updatedAt"
             `, [
                 bookUpdateInput.title ?? null,
                 bookUpdateInput.publicationYear ?? null,
                 bookUpdateInput.publicationDate ?? null,
                 bookUpdateInput.genre ?? null,
-                bookUpdateInput.available ?? null,
                 bookUpdateInput.publisher ?? null,
                 bookUpdateInput.pageCount ?? null,
                 id

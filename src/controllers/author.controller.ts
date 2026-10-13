@@ -102,8 +102,8 @@ export class AuthorController implements AuthorControllerInterface {
 
             const updateName = await rl.question('Enter new author name (leave blank to keep current): ');
             const updateNationality = await rl.question('Enter new author nationality (leave blank to keep current): ');
-
-            if (!updateName || updateName.trim() === '' || !updateNationality || updateNationality.trim() === '') {
+            
+            if ((!updateName || updateName.trim() === '') && (!updateNationality || updateNationality.trim() === '')) {
                 throw new Error('Author name or nationality are required');
             }
             
