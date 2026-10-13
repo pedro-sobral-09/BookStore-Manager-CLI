@@ -11,6 +11,10 @@ import { CustomerRepository } from './repositories/customer.repository.js';
 import { CustomerService } from './services/customer.service.js';
 import { CustomerController } from './controllers/customer.controller.js';
 import { CustomerMenu } from './menu/customer.menu.js';
+import { LoanRepository } from './repositories/loan.repository.js';
+import { LoanService } from './services/loan.service.js';
+import { LoanController } from './controllers/loan.controller.js';
+import { LoanMenu } from './menu/loan.menu.js';
 
 const authorRepository = new AuthorRepository(pool);
 const authorService = new AuthorService(authorRepository);
@@ -27,4 +31,9 @@ const customerService = new CustomerService(customerRepository);
 const customerController = new CustomerController(customerService);
 const customerMenu = new CustomerMenu(customerController);
 
-export { authorMenu, bookMenu, customerMenu };
+const loanRepository = new LoanRepository(pool);
+const loanService = new LoanService(loanRepository, bookRepository, customerRepository);
+const loanController = new LoanController(loanService);
+const loanMenu = new LoanMenu(loanController);
+
+export { authorMenu, bookMenu, customerMenu, loanMenu };
